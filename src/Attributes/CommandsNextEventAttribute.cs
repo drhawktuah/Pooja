@@ -5,6 +5,7 @@ namespace Pooja.src.Attributes;
 /// Classes marked with this attribute must match the target event name
 /// </summary>
 [AttributeUsage(AttributeTargets.Class)]
-public class CommandsNextEventAttribute : Attribute {
+public class CommandsNextEventAttribute : Attribute
+{
 
 }
