@@ -6,9 +6,6 @@ namespace Pooja.src;
 
 public class PoojaConfig
 {
-    [JsonProperty("admin_ids")]
-    public List<ulong> AdminIDs { get; set; }
-
     [JsonProperty("owner_ids")]
     public List<ulong> OwnerIDs { get; set; }
 
@@ -18,30 +15,31 @@ public class PoojaConfig
     [JsonProperty("token")]
     public string Token { get; set; }
 
+    [JsonProperty("admin_ids")]
+    public List<ulong> AdminIDs { get; set; }
+
     public static PoojaConfig Deserialize(string @jsonPath)
     {
+        if (string.IsNullOrEmpty(jsonPath) || string.IsNullOrWhiteSpace(jsonPath))
         {
-            if (string.IsNullOrEmpty(jsonPath) || string.IsNullOrWhiteSpace(jsonPath))
-            {
-                throw new NullReferenceException($"{nameof(jsonPath)} cannot be empty, null or whitespace");
-            }
-
-            if (!File.Exists(jsonPath))
-            {
-                throw new FileNotFoundException(nameof(jsonPath));
-            }
-
-            string data = File.ReadAllText(jsonPath);
-
-            var config = JsonConvert.DeserializeObject<PoojaConfig>(data);
-
-            if (config == null)
-            {
-                throw new NullReferenceException($"{nameof(config)} is null");
-            }
-
-            return config;
+            throw new NullReferenceException($"{nameof(jsonPath)} cannot be empty, null or whitespace");
         }
+
+        if (!File.Exists(jsonPath))
+        {
+            throw new FileNotFoundException(nameof(jsonPath));
+        }
+
+        string data = File.ReadAllText(jsonPath);
+
+        var config = JsonConvert.DeserializeObject<PoojaConfig>(data);
+
+        if (config == null)
+        {
+            throw new NullReferenceException($"{nameof(config)} is null");
+        }
+
+        return config;
     }
 }
 

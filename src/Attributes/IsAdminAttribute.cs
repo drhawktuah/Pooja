@@ -1,16 +1,18 @@
 using DSharpPlus.CommandsNext;
 using DSharpPlus.CommandsNext.Attributes;
 using Microsoft.Extensions.DependencyInjection;
+using Pooja.src.Services;
 
 namespace Pooja.src.Attributes;
 
 [AttributeUsage(AttributeTargets.Method, AllowMultiple = false)]
 public class IsAdminAttribute : CheckBaseAttribute
 {
-    public override Task<bool> ExecuteCheckAsync(CommandContext ctx, bool help)
+    public override async Task<bool> ExecuteCheckAsync(CommandContext ctx, bool help)
     {
-        var config = ctx.Services.GetRequiredService<PoojaConfig>();
+        var poojaService = ctx.Services.GetRequiredService<GeneralPoojaService>();
+        var admins = await poojaService.GetPoojaAdminsAsync(); 
 
-        return Task.FromResult(config.AdminIDs.Any(x => x == ctx.User.Id));
+        return admins.Any(x => x.ID == ctx.User.Id && x.Position == PoojaHierarchy.Admin);
     }
 }

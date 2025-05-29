@@ -5,28 +5,43 @@ using DSharpPlus.Interactivity;
 using DSharpPlus.Interactivity.Extensions;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
+using MongoDB.Driver;
 using Pooja.src.Extensions;
+using Pooja.src.Services;
 
 namespace Pooja.src;
 
 public sealed class Pooja
 {
-    public static readonly PoojaConfig Config = PoojaConfig.Deserialize("src//config.jsonc");
-    public static readonly Random Random = new();
-    public readonly DiscordClient Client;
+    private static readonly PoojaConfig poojaConfig = PoojaConfig.Deserialize("src//JSON//config.json");
 
+    private static readonly Random random = new();
+    private static readonly RandomHouseService houseService = new("src//Assets//House", "src//Assets//house.txt");
+
+    private static readonly MongoClient mongoClient = new("mongodb://localhost:27017");
+    private static readonly IMongoDatabase mongoDatabase = mongoClient.GetDatabase("Pooja");
+    private static readonly EconomyService economyService = new(mongoDatabase);
+    private static readonly GeneralPoojaService generalPoojaService = new(mongoDatabase);
+
+    public readonly DiscordClient Client;
     private readonly CommandsNextExtension CommandsNext;
+
     private static readonly ServiceProvider services = new ServiceCollection()
-        .AddSingleton(Config)
-        .AddSingleton(Random)
+        .AddSingleton(poojaConfig)
+        .AddSingleton(random)
+        .AddSingleton(houseService)
+        .AddSingleton(mongoClient)
+        .AddSingleton(mongoDatabase)
+        .AddSingleton(economyService)
+        .AddSingleton(generalPoojaService)
         .BuildServiceProvider();
 
     internal Pooja()
     {
-        Client = new(GetDiscordConfiguration(Config));
+        Client = new(GetDiscordConfiguration(poojaConfig));
         Client.UseInteractivity(GetInteractivityConfiguration());
 
-        CommandsNext = Client.UseCommandsNext(GetCommandsNextConfiguration(Config));
+        CommandsNext = Client.UseCommandsNext(GetCommandsNextConfiguration(poojaConfig));
         CommandsNext.RegisterCommands(Assembly.GetExecutingAssembly());
         CommandsNext.SetHelpFormatter<PoojaHelpFormatter>();
     }
