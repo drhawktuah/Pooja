@@ -65,6 +65,28 @@ public static partial class StringExtensions
         return '`' + new string(mask, value.Length) + '`'; // you know what this is
     }
 
+    public static string Ordinal(this long integer)
+    {
+        string s = integer.ToString();
+
+        if (integer < 1)
+            return s;
+
+        integer %= 100;
+        if ((integer >= 11) && (integer <= 13))
+        {
+            return s + "th";
+        }
+
+        return (integer % 10) switch
+        {
+            1 => s + "st",
+            2 => s + "nd",
+            3 => s + "rd",
+            _ => s + "th",
+        };
+    }
+
     /// <summary>
     /// Capitalizes letters when necessary. Since this isn't built-in and requires a different library, I made my own equivalent with other utilities
     /// </summary>

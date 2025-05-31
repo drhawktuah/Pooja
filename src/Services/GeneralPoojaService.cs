@@ -1,11 +1,6 @@
-using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Threading.Tasks;
 using MongoDB.Driver;
 using Pooja.src.Exceptions.General;
 using Pooja.src.Models.General;
-using Pooja.src.Utils;
 
 namespace Pooja.src.Services;
 
@@ -25,7 +20,7 @@ public sealed class GeneralPoojaService
 
         if (found == null)
         {
-            throw new PoojaAdminNotFoundException($"Admin {ID} does not exist");
+            throw new PoojaAdminNotFoundException($"admin {ID} does not exist");
         }
 
         return found;
@@ -58,6 +53,21 @@ public sealed class GeneralPoojaService
         return poojaAdmin;
     }
 
+    public async Task<PoojaAdmin> RemovePoojaAdminAsync(ulong ID)
+    {
+        var cursor = await adminCollection.FindAsync(x => x.ID == ID);
+        var found = await cursor.FirstOrDefaultAsync();
+
+        if (found == null)
+        {
+            throw new PoojaAdminNotFoundException($"admin {ID} does not exist");
+        }
+
+        await adminCollection.DeleteOneAsync(x => x.ID == ID);
+
+        return found;
+    }
+
     public async Task<List<PoojaAdmin>> GetPoojaAdminsAsync(PoojaHierarchy? hierarchy = null)
     {
         IAsyncCursor<PoojaAdmin> cursor;
@@ -75,11 +85,11 @@ public sealed class GeneralPoojaService
 
         if (admins.Count == 0 && hierarchy is not null)
         {
-            throw new PoojaAdminNotFoundException($"No admins have found regarding position {hierarchy}");
+            throw new PoojaAdminNotFoundException($"no admins have found regarding position {hierarchy}");
         }
         else if (admins.Count == 0 && hierarchy is null)
         {
-            throw new PoojaAdminNotFoundException($"No admins have been found");
+            throw new PoojaAdminNotFoundException($"no admins have been found regarding any position");
         }
 
         return admins;

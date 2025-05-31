@@ -39,7 +39,7 @@ public class OwnerModule : BaseCommandModule
 
         var pages = await interactivity.ToDiscordPages(
             admins,
-            titleSelector: x => x.Name,
+            titleSelector: x => Task.FromResult(x.Name),
             colorSelector: x => new DiscordColor(0x503dfc),
             footerSelector: x => ("a list of admins within this server", context.Client.CurrentUser.AvatarUrl),
             thumbnailSelector: async x =>

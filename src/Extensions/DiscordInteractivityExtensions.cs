@@ -119,8 +119,8 @@ public static partial class DiscordInteractivityExtensions
     public static async Task<List<DiscordEmbed>> ToDiscordPages<T>(
         this InteractivityExtension _,
         IEnumerable<T> items,
-        Func<T, string> titleSelector,
-        Func<T, string>? descriptionSelector = null,
+        Func<T, Task<string>> titleSelector,
+        Func<T, Task<string>>? descriptionSelector = null,
         Func<T, DiscordColor>? colorSelector = null,
         Func<T, (string text, string iconUrl)>? footerSelector = null,
         Func<T, DateTimeOffset>? timestampSelector = null,
@@ -131,11 +131,11 @@ public static partial class DiscordInteractivityExtensions
         {
             var embed = new DiscordEmbedBuilder
             {
-                Title = titleSelector(item)
+                Title = await titleSelector(item)
             };
 
             if (descriptionSelector is not null)
-                embed.WithDescription(descriptionSelector(item));
+                embed.WithDescription(await descriptionSelector(item));
 
             if (colorSelector is not null)
                 embed.WithColor(colorSelector(item));
