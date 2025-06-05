@@ -1,13 +1,15 @@
-﻿namespace Pooja;
+﻿using Pooja.src.Services;
+
+namespace Pooja;
 
 public class Program
 {
     public async static Task Main(string[] args)
     {
-        GetTotalLines(".");
+        //GetTotalLines(".");
 
         src.Pooja pooja = new();
-        await pooja.Start();
+        await pooja.StartAsync();
     }
 
     public static void GetTotalLines(string @directoryPath)

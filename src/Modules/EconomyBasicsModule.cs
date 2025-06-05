@@ -10,7 +10,7 @@ using Pooja.src.Utils;
 
 namespace Pooja.src.Modules;
 
-public class EconomyModule : BaseCommandModule
+public partial class EconomyModule : BaseCommandModule
 {
     public required EconomyService EconomyService { get; set; }
 
@@ -159,6 +159,12 @@ public class EconomyModule : BaseCommandModule
     [IsPlayer]
     public async Task GiveMoneyAsync(CommandContext context, DiscordMember member, long amount = 500)
     {
+        if (member.Id == context.User.Id)
+        {
+            await context.RespondAsync("you can't send money to yourself");
+            return;
+        }
+
         if (amount <= 0)
         {
             await context.RespondAsync($"you can't send nothing to {member.Mention}");
@@ -174,7 +180,188 @@ public class EconomyModule : BaseCommandModule
             return;
         }
 
+        if (receiver.Cash == long.MaxValue)
+        {
+            await context.RespondAsync($"{member.Mention} has the max amount of money in their account {EconomyUtils.FormatCurrency(amount)}");
+            return;
+        }
+
+        long availableSpace = long.MaxValue - receiver.Cash;
+        long actualTransfer = Math.Min(amount, availableSpace);
+
+        sender.Cash -= actualTransfer;
+        receiver.Cash += actualTransfer;
+
+        await EconomyService.UpdatePoojaUserAsync(sender);
+        await EconomyService.UpdatePoojaUserAsync(receiver);
+
         var embedBuilder = new DiscordEmbedBuilder()
             .WithTitle("cash transaction")
+            .WithDescription($"{context.User.Mention} gave {member.Mention} `{EconomyUtils.FormatCurrency(actualTransfer)}`")
+            .WithColor(0x503dfc);
+
+        await context.RespondAsync(embedBuilder);
+    }
+
+    [Command("deposit")]
+    [Aliases("dep")]
+    [Description("Allows you to hand in cash to your bank")]
+    [IsPlayer]
+    public async Task DepositAsync(CommandContext context, long amount = 500)
+    {
+        if (amount <= 0)
+        {
+            await context.RespondAsync("you can't deposit nothing");
+            return;
+        }
+
+        var sender = await EconomyService.GetPoojaEconomyUserAsync(context.User.Id);
+
+        if (amount > sender.Cash)
+        {
+            await context.RespondAsync($"you can't deposit more than `{EconomyUtils.FormatCurrency(sender.Cash)}` to your bank");
+            return;
+        }
+
+        if (sender.Bank == long.MaxValue)
+        {
+            await context.RespondAsync("you can't deposit more money due to your account being full");
+            return;
+        }
+
+        long availableSpace = long.MaxValue - sender.Cash;
+        long actualTransfer = Math.Min(amount, availableSpace);
+
+        sender.Cash -= actualTransfer;
+        sender.Bank += actualTransfer;
+
+        await EconomyService.UpdatePoojaUserAsync(sender);
+
+        var embedBuilder = new DiscordEmbedBuilder()
+            .WithTitle("deposit")
+            .WithDescription($"added `{EconomyUtils.FormatCurrency(actualTransfer)}` tokens to your bank account")
+            .WithColor(0x503dfc);
+
+        await context.RespondAsync(embedBuilder);
+    }
+
+    public async Task DepositAsync(CommandContext context, [RemainingText] string keyword)
+    {
+        if (!keyword.Equals("all", StringComparison.OrdinalIgnoreCase) &&
+            !keyword.Equals("max", StringComparison.OrdinalIgnoreCase))
+        {
+            await context.RespondAsync("provide a valid amount (e.g: `all`, `max`) or use `deposit [amount]`");
+            return;
+        }
+
+        var sender = await EconomyService.GetPoojaEconomyUserAsync(context.User.Id);
+
+        if (sender.Cash <= 0)
+        {
+            await context.RespondAsync($"you can't deposit more than `{EconomyUtils.FormatCurrency(sender.Bank)}`");
+            return;
+        }
+
+        if (sender.Bank == long.MaxValue)
+        {
+            await context.RespondAsync("your bank account is full--you cant deposit any more");
+            return;
+        }
+
+        long availableSpace = long.MaxValue - sender.Bank;
+        long actualTransfer = Math.Min(sender.Cash, availableSpace);
+
+        sender.Cash -= actualTransfer;
+        sender.Bank += actualTransfer;
+
+        await EconomyService.UpdatePoojaUserAsync(sender);
+
+        var embedBuilder = new DiscordEmbedBuilder()
+            .WithTitle("deposit")
+            .WithDescription($"you deposited `{EconomyUtils.FormatCurrency(actualTransfer)}` tokens to your bank account")
+            .WithColor(0x503dfc);
+
+        await context.RespondAsync(embedBuilder);
+    }
+
+    [Command("withdraw")]
+    [Aliases("with")]
+    [Description("Allows you to withdraw money from your bank")]
+    [IsPlayer]
+    public async Task WithdrawAsync(CommandContext context, long amount = 500)
+    {
+        if (amount <= 0)
+        {
+            await context.RespondAsync("you can't withdraw nothing");
+            return;
+        }
+
+        var sender = await EconomyService.GetPoojaEconomyUserAsync(context.User.Id);
+
+        if (amount > sender.Bank)
+        {
+            await context.RespondAsync($"you can't withdraw more than `{EconomyUtils.FormatCurrency(sender.Bank)}`");
+            return;
+        }
+
+        if (sender.Cash == long.MaxValue)
+        {
+            await context.RespondAsync("your wallet is full--you cant withdraw any more");
+            return;
+        }
+
+        long availableSpace = long.MaxValue - sender.Cash;
+        long actualTransfer = Math.Min(amount, availableSpace);
+
+        sender.Bank -= actualTransfer;
+        sender.Cash += actualTransfer;
+
+        await EconomyService.UpdatePoojaUserAsync(sender);
+
+        var embedBuilder = new DiscordEmbedBuilder()
+            .WithTitle("withdraw")
+            .WithDescription($"you withdrew `{EconomyUtils.FormatCurrency(actualTransfer)}` from your bank")
+            .WithColor(0x503dfc);
+
+        await context.RespondAsync(embedBuilder);
+    }
+
+    public async Task WithdrawAsync(CommandContext context, [RemainingText] string keyword)
+    {
+        if (!keyword.Equals("all", StringComparison.OrdinalIgnoreCase) &&
+            !keyword.Equals("max", StringComparison.OrdinalIgnoreCase))
+        {
+            await context.RespondAsync("provide a valid amount (e.g: `all`, `max`) or use `withdraw [amount]`");
+            return;
+        }
+
+        var sender = await EconomyService.GetPoojaEconomyUserAsync(context.User.Id);
+
+        if (sender.Bank <= 0)
+        {
+            await context.RespondAsync($"you can't withdraw more than `{EconomyUtils.FormatCurrency(sender.Bank)}`");
+            return;
+        }
+
+        if (sender.Cash == long.MaxValue)
+        {
+            await context.RespondAsync("your wallet is full--you can't withdraw any more");
+            return;
+        }
+
+        long availableSpace = long.MaxValue - sender.Cash;
+        long actualTransfer = Math.Min(sender.Bank, availableSpace);
+
+        sender.Bank -= actualTransfer;
+        sender.Cash += actualTransfer;
+
+        await EconomyService.UpdatePoojaUserAsync(sender);
+
+        var embedBuilder = new DiscordEmbedBuilder()
+            .WithTitle("withdraw")
+            .WithDescription($"you withdrew `{EconomyUtils.FormatCurrency(actualTransfer)}` from your bank")
+            .WithColor(0x503dfc);
+
+        await context.RespondAsync(embedBuilder);
     }
 }

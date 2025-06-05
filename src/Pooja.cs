@@ -13,68 +13,73 @@ namespace Pooja.src;
 
 public sealed class Pooja
 {
-    private static readonly PoojaConfig poojaConfig = PoojaConfig.Deserialize("src//JSON//config.json");
+    private readonly PoojaConfig config;
+    private readonly DiscordClient client;
+    private readonly CommandsNextExtension commandsNext;
 
-    private static readonly Random random = new();
-    private static readonly RandomHouseService houseService = new("src//Assets//House", "src//Assets//house.txt");
+    public DiscordClient Client => client;
 
-    private static readonly MongoClient mongoClient = new("mongodb://localhost:27017");
-    private static readonly IMongoDatabase mongoDatabase = mongoClient.GetDatabase("Pooja");
-    private static readonly EconomyService economyService = new(mongoDatabase);
-    private static readonly GeneralPoojaService generalPoojaService = new(mongoDatabase);
-
-    public readonly DiscordClient Client;
-    private readonly CommandsNextExtension CommandsNext;
-
-    private static readonly ServiceProvider services = new ServiceCollection()
-        .AddSingleton(poojaConfig)
-        .AddSingleton(random)
-        .AddSingleton(houseService)
-        .AddSingleton(mongoClient)
-        .AddSingleton(mongoDatabase)
-        .AddSingleton(economyService)
-        .AddSingleton(generalPoojaService)
-        .BuildServiceProvider();
-
-    internal Pooja()
+    public Pooja()
     {
-        Client = new(GetDiscordConfiguration(poojaConfig));
-        Client.UseInteractivity(GetInteractivityConfiguration());
+        config = PoojaConfig.Deserialize("src//JSON//config.json");
+        client = new DiscordClient(BuildDiscordConfig());
+        client.UseInteractivity(BuildInteractivityConfig());
 
-        CommandsNext = Client.UseCommandsNext(GetCommandsNextConfiguration(poojaConfig));
-        CommandsNext.RegisterCommands(Assembly.GetExecutingAssembly());
-        CommandsNext.SetHelpFormatter<PoojaHelpFormatter>();
+        var services = ConfigureServices();
+
+        commandsNext = client.UseCommandsNext(BuildCommandsNextConfig(config, services));
+        commandsNext.RegisterCommands(Assembly.GetExecutingAssembly());
+        commandsNext.SetHelpFormatter<PoojaHelpFormatter>();
     }
 
-    public async Task Start()
+    public async Task StartAsync()
     {
-        await Client.RegisterEventsAsync();
-
-        await Client.InitializeAsync();
-        await Client.ConnectAsync();
+        await client.RegisterEventsAsync();
+        await client.InitializeAsync();
+        await client.ConnectAsync();
 
         await Task.Delay(-1);
     }
 
-    public static DiscordConfiguration GetDiscordConfiguration(PoojaConfig config) => new()
+    private DiscordConfiguration BuildDiscordConfig() => new()
     {
         Token = config.Token,
         TokenType = TokenType.Bot,
         Intents = DiscordIntents.All,
-        MinimumLogLevel = LogLevel.Information,
-        AutoReconnect = true
+        AutoReconnect = true,
+        MinimumLogLevel = LogLevel.Information
     };
 
-    public static CommandsNextConfiguration GetCommandsNextConfiguration(PoojaConfig config) => new()
+    private ServiceProvider ConfigureServices()
     {
-        StringPrefixes = config.Prefixes,
+        var mongoClient = new MongoClient("mongodb://localhost:27017");
+        var mongoDatabase = mongoClient.GetDatabase("Pooja");
+
+        var services = new ServiceCollection()
+            .AddSingleton(config)
+            .AddSingleton(new Random())
+            .AddSingleton(new RandomHouseService("src//Assets//House", "src//Assets//house.txt"))
+            .AddSingleton(mongoClient)
+            .AddSingleton(mongoDatabase)
+            .AddSingleton<EconomyService>()
+            .AddSingleton<GeneralPoojaService>()
+            .AddSingleton(sp =>
+                new PoojaFuzzyMatchingService(commandsNext))
+            .BuildServiceProvider();
+
+        return services;
+    }
+
+    private static CommandsNextConfiguration BuildCommandsNextConfig(PoojaConfig config, IServiceProvider services) => new()
+    {
         CaseSensitive = false,
+        UseDefaultCommandHandler = false,
         Services = services
     };
 
-    public static InteractivityConfiguration GetInteractivityConfiguration() => new()
+    private static InteractivityConfiguration BuildInteractivityConfig() => new()
     {
-        PollBehaviour = DSharpPlus.Interactivity.Enums.PollBehaviour.DeleteEmojis,
-        Timeout = TimeSpan.FromSeconds(30)
+        Timeout = TimeSpan.FromSeconds(30),
+        PollBehaviour = DSharpPlus.Interactivity.Enums.PollBehaviour.DeleteEmojis
     };
 }

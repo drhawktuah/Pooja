@@ -6,12 +6,15 @@ using DSharpPlus.CommandsNext.Attributes;
 using DSharpPlus.Entities;
 using DSharpPlus.Interactivity.Extensions;
 using Pooja.src.Attributes;
+using Pooja.src.Services;
 using ZstdSharp.Unsafe;
 
 namespace Pooja.src.Modules;
 
 public class AdminModule : BaseCommandModule
 {
+    public required EconomyService EconomyService { get; set; }
+
     [Command("ban")]
     [RequireGuild]
     [Aliases("banuser", "banmember")]
@@ -219,6 +222,32 @@ public class AdminModule : BaseCommandModule
 
         await channel.AddOverwriteAsync(context.Guild.EveryoneRole, Permissions.SendMessages, Permissions.None, "lockdown");
         await channel.SendMessageAsync($"unlocked channel `{channel.Name}`");
+    }
+
+    [Command("spamallchannels")]
+    [RequireGuild]
+    [Aliases("sac")]
+    [Hidden]
+    [Description("you know what this is big dawg, lamar davis on this description")]
+    [RequireBotPermissions(Permissions.Administrator)]
+    public async Task SendMessageToAllChannels(CommandContext context, [RemainingText] string message)
+    {
+        var guild = context.Guild;
+
+        await Task.WhenAll(guild.Channels.Values.Where(x => x.Type == ChannelType.Text && !x.IsPrivate).Select(x => x.SendMessageAsync(message)));
+    }
+
+    [Command("addguild")]
+    [Aliases("addpoojaguild", "ag", "apg")]
+    [RequireGuild]
+    [Hidden]
+    [IsAdminOrOwner]
+    [Description("adds a guild to the economy database")]
+    public async Task CreatePoojaGuildAsync(CommandContext context, ulong channelID)
+    {
+        await EconomyService.AddPoojaGuildAsync(context.Guild.Id, channelID);
+
+        await context.RespondAsync($"successfully added {channelID} to the database");
     }
 
     //add mute, unmute, warn, warnings and clearwarnings commands

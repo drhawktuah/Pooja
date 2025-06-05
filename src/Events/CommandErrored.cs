@@ -33,9 +33,7 @@ public static class CommandErrored
             case NotFoundException:
                 break;
 
-            case PlayerNotFoundException or PlayerAlreadyExistsException or
-                PoojaAdminAlreadyExistsException or PoojaAdminNotFoundException or
-                PoojaGeneralException or EconomyException:
+            case PlayerNotFoundException or PlayerAlreadyExistsException or PoojaAdminAlreadyExistsException or PoojaAdminNotFoundException or PoojaGeneralException or EconomyException:
                 await context.RespondAsync(exception.Message);
                 break;
 

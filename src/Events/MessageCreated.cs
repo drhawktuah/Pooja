@@ -1,8 +1,3 @@
-using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Text.RegularExpressions;
-using System.Threading.Tasks;
 using DSharpPlus;
 using DSharpPlus.CommandsNext;
 using DSharpPlus.Entities;
@@ -13,44 +8,64 @@ using Pooja.src.Services;
 
 namespace Pooja.src.Events;
 
-/*
+
 [DiscordClientEvent]
 public static class MessageCreated
 {
     public static async Task MainAsync(DiscordClient client, MessageCreateEventArgs args)
     {
-        if (args.Author.IsBot)
+        var author = args.Author;
+
+        if (author.IsBot)
             return;
+
+        var message = args.Message;
 
         var commandsNext = client.GetCommandsNext();
 
-        var message = args.Message;
-        var houseService = commandsNext.Services.GetRequiredService<RandomHouseService>();
+        var fuzzyService = commandsNext.Services.GetRequiredService<PoojaFuzzyMatchingService>();
+        var config = commandsNext.Services.GetRequiredService<PoojaConfig>();
 
-        var result = commandsNext.FindCommand(message.Content, out _);
+        var (messagePosition, matchedPrefix) = FindMatchingPrefixes(config, message);
 
-        if (result == null)
+        if (messagePosition == -1 || matchedPrefix == null)
+            return;
+
+        var commandString = message.Content[messagePosition..]
+            .Trim();
+
+        if (string.IsNullOrWhiteSpace(commandString))
+            return;
+
+        var parts = commandString.Split(' ', 2, StringSplitOptions.RemoveEmptyEntries);
+        var (commandName, rawArguments) = (
+            parts.Length > 0 ? parts[0] : string.Empty,
+            parts.Length > 1 ? parts[1] : string.Empty
+        );
+
+        var command = commandsNext.FindCommand(commandName, out var _);
+        if (command == null)
         {
-            var content = message.Content.ToLowerInvariant();
+            var results = fuzzyService.GetResults(commandName);
+            var embed = await fuzzyService.ToDiscordEmbed(commandName, results);
 
-            if (Regex.IsMatch(content, @"\b(house|vicodin)\b", RegexOptions.IgnoreCase))
-            {
-                var randomPicture = houseService.GetRandomPicture();
+            await message.Channel.SendMessageAsync(embed);
 
-                await using var fs = randomPicture.OpenRead();
-
-                var embed = new DiscordEmbedBuilder()
-                    .WithTitle("vi-vi-vicodi-i-in...?")
-                    .WithImageUrl($"attachment://{randomPicture.Name}")
-                    .WithColor(0xff0000);
-
-                var builder = new DiscordMessageBuilder()
-                    .WithEmbed(embed)
-                    .AddFile(randomPicture.Name, fs);
-
-                await message.Channel.SendMessageAsync(builder);
-            }
+            return;
         }
+
+        await commandsNext.ExecuteCommandAsync(commandsNext.CreateContext(message, matchedPrefix, command, rawArguments));
+    }
+
+    private static (int, string?) FindMatchingPrefixes(PoojaConfig config, DiscordMessage message)
+    {
+        foreach (var prefix in config.Prefixes)
+        {
+            int index = message.GetStringPrefixLength(prefix);
+            if (index != -1)
+                return (index, prefix);
+        }
+
+        return (-1, null);
     }
 }
-*/
